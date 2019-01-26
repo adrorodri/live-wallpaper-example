@@ -5,14 +5,19 @@ import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
 import android.os.Handler;
 import android.support.v7.preference.PreferenceManager;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 
+import com.adrorodri.livewallpapertest.model.DisplayParams;
 import com.adrorodri.livewallpapertest.model.Point;
+import com.adrorodri.livewallpapertest.utils.DisplayUtils;
+import com.adrorodri.livewallpapertest.utils.PointUtils;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class WallpaperService extends android.service.wallpaper.WallpaperService {
@@ -30,37 +35,63 @@ public class WallpaperService extends android.service.wallpaper.WallpaperService
             }
 
         };
-        private List<Point> circles;
         private Paint paint = new Paint();
-        private int width;
-        int height;
+        private Paint strokePaint = new Paint();
         private boolean visible = true;
-        private int maxNumber;
-        private boolean touchEnabled;
+        private List<Point> points;
 
-        public MyWallpaperEngine(Context context) {
-            SharedPreferences prefs = PreferenceManager
+        // Prefs values
+        private SharedPreferences prefs;
+        private int maxNumber;
+        private float minSpeed;
+        private float maxSpeed;
+        private float maxDrawingDistance;
+
+        private MyWallpaperEngine(Context context) {
+            prefs = PreferenceManager
                     .getDefaultSharedPreferences(context);
-            maxNumber = Integer
-                    .valueOf(prefs.getString("numberOfCircles", "4"));
-            touchEnabled = prefs.getBoolean("touch", false);
-            circles = new ArrayList<Point>();
+
+            updatePrefs();
+
             paint.setAntiAlias(true);
             paint.setColor(Color.WHITE);
-            paint.setStyle(Paint.Style.STROKE);
+            paint.setStyle(Paint.Style.FILL);
             paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStrokeWidth(10f);
+
+            strokePaint.setAntiAlias(true);
+            strokePaint.setColor(Color.GRAY);
+            strokePaint.setStyle(Paint.Style.STROKE);
+            strokePaint.setStrokeJoin(Paint.Join.ROUND);
+            strokePaint.setStrokeWidth(2f);
+            strokePaint.setAlpha(100);
+
+            points = new LinkedList<>();
+            points = PointUtils.getInitialRandomPoints(new DisplayParams(DisplayUtils.getHeight(context), DisplayUtils.getWidth(context)), maxNumber, minSpeed, maxSpeed);
             handler.post(drawRunner);
+        }
+
+        private void updatePrefs() {
+            maxNumber = Integer
+                    .valueOf(prefs.getString("numberOfDots", "30"));
+            minSpeed = Float
+                    .valueOf(prefs.getString("minSpeed", "0.1"));
+            maxSpeed = Float
+                    .valueOf(prefs.getString("maxSpeed", "1"));
+            maxDrawingDistance = Float
+                    .valueOf(prefs.getString("maxDrawingDistance", "500"));
         }
 
         @Override
         public void onVisibilityChanged(boolean visible) {
             this.visible = visible;
             if (visible) {
+                updatePrefs();
                 handler.post(drawRunner);
             } else {
                 handler.removeCallbacks(drawRunner);
             }
+            Log.d("LIVEWALLPAPERLOG", "Visibility Changed");
         }
 
         @Override
@@ -68,72 +99,59 @@ public class WallpaperService extends android.service.wallpaper.WallpaperService
             super.onSurfaceDestroyed(holder);
             this.visible = false;
             handler.removeCallbacks(drawRunner);
+            Log.d("LIVEWALLPAPERLOG", "Surface Destroyed");
+        }
+
+        @Override
+        public void onSurfaceCreated(SurfaceHolder holder) {
+            super.onSurfaceCreated(holder);
+            Log.d("LIVEWALLPAPERLOG", "Surface Created");
+        }
+
+        @Override
+        public void onSurfaceRedrawNeeded(SurfaceHolder holder) {
+            super.onSurfaceRedrawNeeded(holder);
+            Log.d("LIVEWALLPAPERLOG", "Redraw Needed");
         }
 
         @Override
         public void onSurfaceChanged(SurfaceHolder holder, int format,
                                      int width, int height) {
-            this.width = width;
-            this.height = height;
             super.onSurfaceChanged(holder, format, width, height);
+            Log.d("LIVEWALLPAPERLOG", "Surface Changed");
         }
 
         @Override
         public void onTouchEvent(MotionEvent event) {
-            if (touchEnabled) {
-
-                float x = event.getX();
-                float y = event.getY();
-                SurfaceHolder holder = getSurfaceHolder();
-                Canvas canvas = null;
-                try {
-                    canvas = holder.lockCanvas();
-                    if (canvas != null) {
-                        canvas.drawColor(Color.BLACK);
-                        circles.clear();
-                        circles.add(new Point(
-                                String.valueOf(circles.size() + 1), x, y));
-                        drawCircles(canvas, circles);
-
-                    }
-                } finally {
-                    if (canvas != null)
-                        holder.unlockCanvasAndPost(canvas);
-                }
-                super.onTouchEvent(event);
-            }
+            // TODO: Implement Touch Events
         }
 
         private void draw() {
             SurfaceHolder holder = getSurfaceHolder();
             Canvas canvas = null;
+            List<Point> shownPoints = new LinkedList<>();
             try {
                 canvas = holder.lockCanvas();
-                if (canvas != null) {
-                    if (circles.size() >= maxNumber) {
-                        circles.clear();
+                canvas.drawColor(0, PorterDuff.Mode.CLEAR);
+                for (Point point : points) {
+                    point.updatePosition(canvas);
+                    for (Point shownPoint : shownPoints) {
+                        strokePaint.setAlpha(PointUtils.getLineAlpha(maxDrawingDistance, point, shownPoint));
+                        if (strokePaint.getAlpha() > 0) {
+                            canvas.drawLine(point.getX(), point.getY(), shownPoint.getX(), shownPoint.getY(), strokePaint);
+                        }
                     }
-                    int x = (int) (width * Math.random());
-                    int y = (int) (height * Math.random());
-                    circles.add(new Point(String.valueOf(circles.size() + 1),
-                            x, y));
-                    drawCircles(canvas, circles);
+                    canvas.drawCircle(point.getX(), point.getY(), point.getSize(), paint);
+                    shownPoints.add(point);
                 }
             } finally {
-                if (canvas != null)
+                if (canvas != null) {
                     holder.unlockCanvasAndPost(canvas);
+                }
             }
             handler.removeCallbacks(drawRunner);
             if (visible) {
-                handler.postDelayed(drawRunner, 5000);
-            }
-        }
-
-        // Surface view requires that all elements are drawn completely
-        private void drawCircles(Canvas canvas, List<Point> circles) {
-            canvas.drawColor(Color.BLACK);
-            for (Point point : circles) {
-                canvas.drawCircle(point.getX(), point.getY(), 20.0f, paint);
+                handler.postDelayed(drawRunner, 5);
             }
         }
     }

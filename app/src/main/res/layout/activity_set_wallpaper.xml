@@ -6,9 +6,9 @@
     android:orientation="vertical">
 
     <Button
-        style="?attr/selectableItemBackgroundBorderless"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackgroundBorderless"
         android:onClick="onClick"
         android:text="@string/setWallpaper" />
 </LinearLayout>

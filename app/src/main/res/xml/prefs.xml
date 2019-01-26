@@ -1,9 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <EditTextPreference
+        android:icon="@drawable/ic_max_number_dots"
+        android:key="numberOfDots"
+        android:title="@string/prefs_number_of_circles" />
     <CheckBoxPreference
-        android:key="touch"
+        android:icon="@drawable/ic_one_finger_click"
+        android:key="enableTouch"
         android:title="@string/prefs_enable_touch" />
     <EditTextPreference
-        android:key="numberOfCircles"
-        android:title="@string/prefs_number_of_circles" />
+        android:icon="@drawable/ic_snail"
+        android:key="minSpeed"
+        android:title="@string/prefs_min_speed" />
+    <EditTextPreference
+        android:icon="@drawable/ic_easter_bunny"
+        android:key="maxSpeed"
+        android:title="@string/prefs_max_speed" />
+    <EditTextPreference
+        android:icon="@drawable/ic_measure_tape"
+        android:key="maxDrawingDistance"
+        android:title="@string/prefs_max_drawing_distance" />
 </PreferenceScreen>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Live Wallpaper Test</string>
+    <string name="app_name">LWP Test</string>
     <string name="app_description">A very cool Live Wallpaper test</string>
     <string name="prefs_enable_touch">Enable Touch</string>
     <string name="prefs_number_of_circles">Number of Circles</string>
